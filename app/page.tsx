@@ -39,7 +39,7 @@ export default function Chat() {
 
   useEffect(() => {
     loadConversationHistory()
-  }, [])
+  }, [loadConversationHistory])
 
   useEffect(() => {
     scrollToBottom()
@@ -118,7 +118,7 @@ export default function Chat() {
       setIsTyping(false)
       setCurrentResponse('')
     }
-  }, [messages, isTyping])
+  }, [messages, isTyping, saveConversationHistory, streamResponse])
 
   const streamResponse = useCallback(async (message: string, history: Message[], currentImageUrl?: string): Promise<string> => {
     if (!process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY) {

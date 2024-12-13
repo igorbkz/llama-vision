@@ -12,6 +12,8 @@ const nextConfig = {
     ],
     dangerouslyAllowSVG: true,
     formats: ['image/webp', 'image/avif'],
+    domains: ['*'],
+    unoptimized: true
   }
 }
 

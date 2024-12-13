@@ -1,6 +1,7 @@
 import { marked } from 'marked'
 import { useEffect, useRef } from 'react'
 import { estimateMessageTokens } from '@/lib/token-utils'
+import Image from 'next/image'
 
 interface ChatMessageProps {
   role: 'user' | 'assistant' | 'system'
@@ -40,11 +41,13 @@ export function ChatMessage({ role, content, image, showTokenCount = false }: Ch
       {image && role === 'user' && (
         <div className="relative w-48 h-48 mb-2">
           <div className="absolute inset-0">
-            <img
+            <Image
               src={image}
               alt="Imagem enviada"
-              className="object-cover w-full h-full rounded"
-              loading="lazy"
+              className="object-cover rounded"
+              fill
+              sizes="(max-width: 192px) 100vw, 192px"
+              priority={false}
             />
           </div>
           {showTokenCount && (

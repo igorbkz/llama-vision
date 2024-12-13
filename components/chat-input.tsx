@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Send, X, Image as ImageIcon, Camera } from 'lucide-react'
 import { resizeImage } from '@/lib/image-utils'
+import Image from 'next/image'
 
 interface ChatInputProps {
   onSendMessage: (message: string, imageUrl?: string) => void
@@ -68,10 +69,12 @@ export function ChatInput({ onSendMessage, disabled }: ChatInputProps) {
       {imageUrl && (
         <div className="relative w-24 h-24 mx-2">
           <div className="absolute inset-0">
-            <img
+            <Image
               src={imageUrl}
               alt="Imagem anexada"
-              className="object-cover w-full h-full rounded"
+              className="object-cover rounded"
+              fill
+              sizes="(max-width: 96px) 100vw, 96px"
             />
           </div>
           <button
