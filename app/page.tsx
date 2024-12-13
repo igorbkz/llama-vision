@@ -37,6 +37,25 @@ export default function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [contextTokens, setContextTokens] = useState(SYSTEM_PROMPT_TOKENS)
 
+  const loadConversationHistory = useCallback(() => {
+    try {
+      const storedHistory = localStorage.getItem('conversationHistory')
+      if (storedHistory) {
+        setMessages(JSON.parse(storedHistory))
+      }
+    } catch (error) {
+      console.error('Erro ao carregar histórico:', error)
+    }
+  }, [])
+
+  const saveConversationHistory = useCallback((messages: Message[]) => {
+    try {
+      localStorage.setItem('conversationHistory', JSON.stringify(messages))
+    } catch (error) {
+      console.error('Erro ao salvar histórico:', error)
+    }
+  }, [])
+
   useEffect(() => {
     loadConversationHistory()
   }, [loadConversationHistory])
@@ -242,29 +261,6 @@ export default function Chat() {
     setMessages([])
     setError(null)
     localStorage.removeItem('conversationHistory')
-  }, [])
-
-  const loadConversationHistory = useCallback(() => {
-    try {
-      const storedHistory = localStorage.getItem('conversationHistory')
-      if (storedHistory) {
-        const parsedHistory = JSON.parse(storedHistory)
-        if (Array.isArray(parsedHistory)) {
-          setMessages(parsedHistory.slice(-MAX_CONTEXT_TOKENS))
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao carregar histórico:', error)
-      localStorage.removeItem('conversationHistory')
-    }
-  }, [])
-
-  const saveConversationHistory = useCallback((history: Message[]) => {
-    try {
-      localStorage.setItem('conversationHistory', JSON.stringify(history.slice(-MAX_CONTEXT_TOKENS)))
-    } catch (error) {
-      console.error('Erro ao salvar histórico:', error)
-    }
   }, [])
 
   return (
