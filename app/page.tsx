@@ -7,6 +7,7 @@ import { TypingIndicator } from '@/components/typing-indicator'
 import { ClearChatButton } from '@/components/clear-chat-button'
 import { Sidebar } from '@/components/sidebar'
 import { HfInference } from "@huggingface/inference"
+import { estimateTokenCount, estimateMessageTokens, selectMessagesForContext, MAX_CONTEXT_TOKENS } from '@/lib/token-utils'
 
 type MessageRole = 'user' | 'assistant' | 'system'
 type Message = {
@@ -16,12 +17,13 @@ type Message = {
   timestamp: number
 }
 
-const MAX_HISTORY_LENGTH = 10 // Reduzido para otimizar o uso de tokens
 const MAX_MESSAGE_LENGTH = 900
 const SYSTEM_PROMPT = `Hendrix, você é um assistente de IA criado no Brasil.
 
 Você mantém um contexto contínuo da conversa, mas o usuário pode apagar ele para reiniciar o histórico.
 Responda de forma clara e direta em português, e use o contexto atual para personalizar suas respostas.`
+
+const SYSTEM_PROMPT_TOKENS = estimateTokenCount(SYSTEM_PROMPT)
 
 // Inicialize o cliente HfInference fora do componente para evitar recriações desnecessárias
 const client = new HfInference(process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY)
@@ -33,6 +35,7 @@ export default function Chat() {
   const [error, setError] = useState<string | null>(null)
   const [currentResponse, setCurrentResponse] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [contextTokens, setContextTokens] = useState(SYSTEM_PROMPT_TOKENS)
 
   useEffect(() => {
     loadConversationHistory()
@@ -41,6 +44,12 @@ export default function Chat() {
   useEffect(() => {
     scrollToBottom()
   }, [messages, currentResponse])
+
+  useEffect(() => {
+    const tokens = messages.reduce((total, msg) => 
+      total + estimateMessageTokens(msg), SYSTEM_PROMPT_TOKENS)
+    setContextTokens(tokens)
+  }, [messages])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -85,7 +94,7 @@ export default function Chat() {
       }
       
       setMessages(prevMessages => {
-        const updatedMessages = [...prevMessages, newAssistantMessage].slice(-MAX_HISTORY_LENGTH)
+        const updatedMessages = [...prevMessages, newAssistantMessage].slice(-MAX_CONTEXT_TOKENS)
         saveConversationHistory(updatedMessages)
         return updatedMessages
       })
@@ -119,13 +128,14 @@ export default function Chat() {
     // Prepare messages with proper image handling
     const formattedMessages: any[] = [{ role: 'system', content: SYSTEM_PROMPT }]
     
-    // Limit history to most recent messages to reduce token usage
-    const recentHistory = history
-      .filter(msg => msg.role !== 'system')
-      .slice(-MAX_HISTORY_LENGTH)
+    // Seleciona mensagens do histórico respeitando o limite de tokens
+    const selectedMessages = selectMessagesForContext(
+      history.filter(msg => msg.role !== 'system'),
+      SYSTEM_PROMPT_TOKENS
+    )
 
-    // Process recent history messages
-    for (const msg of recentHistory) {
+    // Process selected messages
+    for (const msg of selectedMessages) {
       if (msg.role === 'user') {
         if (msg.image) {
           formattedMessages.push({
@@ -240,7 +250,7 @@ export default function Chat() {
       if (storedHistory) {
         const parsedHistory = JSON.parse(storedHistory)
         if (Array.isArray(parsedHistory)) {
-          setMessages(parsedHistory.slice(-MAX_HISTORY_LENGTH))
+          setMessages(parsedHistory.slice(-MAX_CONTEXT_TOKENS))
         }
       }
     } catch (error) {
@@ -251,7 +261,7 @@ export default function Chat() {
 
   const saveConversationHistory = useCallback((history: Message[]) => {
     try {
-      localStorage.setItem('conversationHistory', JSON.stringify(history.slice(-MAX_HISTORY_LENGTH)))
+      localStorage.setItem('conversationHistory', JSON.stringify(history.slice(-MAX_CONTEXT_TOKENS)))
     } catch (error) {
       console.error('Erro ao salvar histórico:', error)
     }
@@ -261,7 +271,7 @@ export default function Chat() {
     <div className="flex h-screen bg-gray-50">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex flex-col flex-grow">
-        <header className="bg-white border-b border-gray-200 p-4">
+        <header className="bg-white border-b border-gray-200 p-4 flex justify-between items-center">
           <button
             onClick={() => setIsSidebarOpen(true)}
             className="text-gray-500 hover:text-gray-700 focus:outline-none"
@@ -270,6 +280,9 @@ export default function Chat() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
+          <div className="text-sm text-gray-500">
+            Contexto: {contextTokens}/{MAX_CONTEXT_TOKENS} tokens
+          </div>
         </header>
         <div className="flex-grow overflow-auto p-4 space-y-4" id="messages">
           {messages
@@ -282,6 +295,7 @@ export default function Chat() {
                 role={message.role} 
                 content={message.content}
                 image={message.image}
+                showTokenCount={true}
               />
             ))}
           {isTyping && (
@@ -303,12 +317,17 @@ export default function Chat() {
             onSendMessage={handleSendMessage}
             disabled={isTyping} 
           />
-          <div className="mt-2 flex justify-center">
+          <div className="mt-2 flex justify-center space-x-4">
             <ClearChatButton onClearChat={handleClearChat} />
+            {contextTokens > MAX_CONTEXT_TOKENS * 0.9 && (
+              <div className="text-yellow-600 text-sm">
+                Contexto próximo do limite. Considere limpar o histórico.
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   )
-                  }
+}
           

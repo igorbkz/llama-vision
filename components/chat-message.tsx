@@ -1,13 +1,15 @@
 import { marked } from 'marked'
 import { useEffect, useRef } from 'react'
+import { estimateMessageTokens } from '@/lib/token-utils'
 
 interface ChatMessageProps {
   role: 'user' | 'assistant' | 'system'
   content: string
   image?: string
+  showTokenCount?: boolean
 }
 
-export function ChatMessage({ role, content, image }: ChatMessageProps) {
+export function ChatMessage({ role, content, image, showTokenCount = false }: ChatMessageProps) {
   const messageRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -24,6 +26,7 @@ export function ChatMessage({ role, content, image }: ChatMessageProps) {
   }, [content])
 
   const formattedContent = marked(content)
+  const tokenCount = showTokenCount ? estimateMessageTokens({ role, content, image }) : 0
 
   return (
     <div 
@@ -41,11 +44,22 @@ export function ChatMessage({ role, content, image }: ChatMessageProps) {
               src={image}
               alt="Imagem enviada"
               className="object-cover w-full h-full rounded"
+              loading="lazy"
             />
           </div>
+          {showTokenCount && (
+            <div className="absolute bottom-0 right-0 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-tl">
+              ~512 tokens
+            </div>
+          )}
         </div>
       )}
       <div className="prose prose-sm" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+      {showTokenCount && (
+        <div className="mt-2 text-xs text-gray-500">
+          Tokens estimados: {tokenCount}
+        </div>
+      )}
     </div>
   )
 }
