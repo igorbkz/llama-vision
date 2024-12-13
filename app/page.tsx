@@ -74,71 +74,6 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const handleSendMessage = useCallback(async (message: string, imageUrl?: string) => {
-    setError(null)
-    
-    if (!message.trim() && !imageUrl) {
-      setError('Forneça uma mensagem ou uma imagem')
-      return
-    }
-    
-    if (isTyping) {
-      setError('Aguarde a resposta anterior ser concluída')
-      return
-    }
-
-    if (message.length > MAX_MESSAGE_LENGTH) {
-      setError(`A mensagem deve ter no máximo ${MAX_MESSAGE_LENGTH} caracteres`)
-      return
-    }
-
-    const newUserMessage: Message = { 
-      role: 'user',
-      content: message.trim(),
-      image: imageUrl,
-      timestamp: Date.now()
-    }
-    
-    setMessages(prevMessages => [...prevMessages, newUserMessage])
-    setIsTyping(true)
-    setCurrentResponse('')
-    
-    try {
-      const finalResponse = await streamResponse(message, messages, imageUrl)
-      
-      const newAssistantMessage: Message = { 
-        role: 'assistant',
-        content: finalResponse.trim(),
-        timestamp: Date.now()
-      }
-      
-      setMessages(prevMessages => {
-        const updatedMessages = [...prevMessages, newAssistantMessage].slice(-MAX_CONTEXT_TOKENS)
-        saveConversationHistory(updatedMessages)
-        return updatedMessages
-      })
-    } catch (error) {
-      console.error('Erro detalhado:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro desconhecido'
-      setError(errorMessage)
-      const errorResponse: Message = { 
-        role: 'assistant',
-        content: `Desculpe, ocorreu um erro ao processar sua mensagem. ${
-          imageUrl ? 'Isso pode ter acontecido devido a um problema com a imagem. ' : ''
-        }Por favor, tente novamente.`,
-        timestamp: Date.now()
-      }
-      setMessages(prevMessages => {
-        const updatedMessages = [...prevMessages, errorResponse]
-        saveConversationHistory(updatedMessages)
-        return updatedMessages
-      })
-    } finally {
-      setIsTyping(false)
-      setCurrentResponse('')
-    }
-  }, [messages, isTyping, saveConversationHistory, streamResponse])
-
   const streamResponse = useCallback(async (message: string, history: Message[], currentImageUrl?: string): Promise<string> => {
     if (!process.env.NEXT_PUBLIC_HUGGINGFACE_API_KEY) {
       throw new Error('API key não encontrada. Configure NEXT_PUBLIC_HUGGINGFACE_API_KEY no arquivo .env')
@@ -256,6 +191,71 @@ export default function Chat() {
       throw new Error('Erro ao processar resposta da API. Por favor, tente novamente.')
     }
   }, [])
+
+  const handleSendMessage = useCallback(async (message: string, imageUrl?: string) => {
+    setError(null)
+    
+    if (!message.trim() && !imageUrl) {
+      setError('Forneça uma mensagem ou uma imagem')
+      return
+    }
+    
+    if (isTyping) {
+      setError('Aguarde a resposta anterior ser concluída')
+      return
+    }
+
+    if (message.length > MAX_MESSAGE_LENGTH) {
+      setError(`A mensagem deve ter no máximo ${MAX_MESSAGE_LENGTH} caracteres`)
+      return
+    }
+
+    const newUserMessage: Message = { 
+      role: 'user',
+      content: message.trim(),
+      image: imageUrl,
+      timestamp: Date.now()
+    }
+    
+    setMessages(prevMessages => [...prevMessages, newUserMessage])
+    setIsTyping(true)
+    setCurrentResponse('')
+    
+    try {
+      const finalResponse = await streamResponse(message, messages, imageUrl)
+      
+      const newAssistantMessage: Message = { 
+        role: 'assistant',
+        content: finalResponse.trim(),
+        timestamp: Date.now()
+      }
+      
+      setMessages(prevMessages => {
+        const updatedMessages = [...prevMessages, newAssistantMessage].slice(-MAX_CONTEXT_TOKENS)
+        saveConversationHistory(updatedMessages)
+        return updatedMessages
+      })
+    } catch (error) {
+      console.error('Erro detalhado:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro desconhecido'
+      setError(errorMessage)
+      const errorResponse: Message = { 
+        role: 'assistant',
+        content: `Desculpe, ocorreu um erro ao processar sua mensagem. ${
+          imageUrl ? 'Isso pode ter acontecido devido a um problema com a imagem. ' : ''
+        }Por favor, tente novamente.`,
+        timestamp: Date.now()
+      }
+      setMessages(prevMessages => {
+        const updatedMessages = [...prevMessages, errorResponse]
+        saveConversationHistory(updatedMessages)
+        return updatedMessages
+      })
+    } finally {
+      setIsTyping(false)
+      setCurrentResponse('')
+    }
+  }, [messages, isTyping, saveConversationHistory, streamResponse])
 
   const handleClearChat = useCallback(() => {
     setMessages([])
