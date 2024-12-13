@@ -4,7 +4,7 @@ import { resizeImage } from '@/lib/image-utils'
 import Image from 'next/image'
 
 interface ChatInputProps {
-  onSendMessage: (message: string, imageUrl?: string) => void
+  onSendMessage: (text: string, imageUrl?: string) => void
   disabled?: boolean
 }
 
