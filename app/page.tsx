@@ -95,7 +95,10 @@ export default function Chat() {
     }
 
     // Prepare messages with proper image handling
-    const formattedMessages: any[] = [{ role: 'system', content: SYSTEM_PROMPT }]
+    const formattedMessages: any[] = [{ 
+      role: 'system', 
+      content: SYSTEM_PROMPT 
+    }]
     
     // Seleciona mensagens do histórico respeitando o limite de tokens
     const selectedMessages = selectMessagesForContext(
@@ -110,13 +113,16 @@ export default function Chat() {
           formattedMessages.push({
             role: 'user',
             content: [
-              { 
+              { type: 'text', text: msg.content || 'Descreva esta imagem em detalhes.' },
+              {
                 type: 'image_url',
-                image_url: { url: msg.image, detail: 'high' }
+                image_url: {
+                  url: msg.image.startsWith('data:') ? msg.image : `data:image/jpeg;base64,${msg.image}`
+                }
               }
             ]
           })
-        } else if (msg.content) {
+        } else {
           formattedMessages.push({
             role: 'user',
             content: msg.content
@@ -124,7 +130,7 @@ export default function Chat() {
         }
       } else if (msg.role === 'assistant') {
         formattedMessages.push({
-          role: msg.role,
+          role: 'assistant',
           content: msg.content
         })
       }
@@ -135,9 +141,12 @@ export default function Chat() {
       formattedMessages.push({
         role: 'user',
         content: [
-          { 
+          { type: 'text', text: message || 'Descreva esta imagem em detalhes.' },
+          {
             type: 'image_url',
-            image_url: { url: currentImageUrl, detail: 'high' }
+            image_url: {
+              url: currentImageUrl.startsWith('data:') ? currentImageUrl : `data:image/jpeg;base64,${currentImageUrl}`
+            }
           }
         ]
       })
@@ -153,6 +162,8 @@ export default function Chat() {
       const timeoutMs = 30000 // 30 segundos
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+      console.log('Enviando mensagens para API:', JSON.stringify(formattedMessages, null, 2))
 
       let fullResponse = ''
       const stream = await client.chatCompletionStream({
