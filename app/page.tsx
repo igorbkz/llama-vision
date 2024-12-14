@@ -6,7 +6,7 @@ import { ChatInput } from '@/components/chat-input'
 import { TypingIndicator } from '@/components/typing-indicator'
 import { Sidebar } from '@/components/sidebar'
 import { HfInference } from "@huggingface/inference"
-import { estimateTokenCount, estimateMessageTokens, selectMessagesForContext } from '@/lib/token-utils'
+import { estimateTokenCount, selectMessagesForContext } from '@/lib/token-utils'
 
 type MessageRole = 'user' | 'assistant' | 'system'
 type Message = {
@@ -17,7 +17,6 @@ type Message = {
 }
 
 const MAX_MESSAGE_LENGTH = 900
-const MAX_CONTEXT_TOKENS = 4000
 const SYSTEM_PROMPT = `Hendrix, você é um assistente de IA criado no Brasil.
 
 Você mantém um contexto contínuo da conversa, mas o usuário pode apagar ele para reiniciar o histórico.
@@ -36,7 +35,6 @@ export default function Chat() {
   const [currentResponse, setCurrentResponse] = useState('')
   const [isDarkMode, setIsDarkMode] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [contextTokens, setContextTokens] = useState(0)
 
   // Add dark mode effect
   useEffect(() => {
@@ -86,13 +84,6 @@ export default function Chat() {
   useEffect(() => {
     scrollToBottom()
   }, [messages, currentResponse])
-
-  useEffect(() => {
-    const tokens = messages.length > 0 
-      ? messages.reduce((total, msg) => total + estimateMessageTokens(msg), SYSTEM_PROMPT_TOKENS)
-      : 0
-    setContextTokens(tokens)
-  }, [messages])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
