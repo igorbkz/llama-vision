@@ -1,14 +1,26 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 interface SidebarProps {
   isOpen: boolean
   onClose: () => void
-  onClearChat: () => void
+  onClearChat: (percentage: number) => void
   onToggleDarkMode: () => void
   isDarkMode: boolean
+  messageCount: number
 }
 
-export function Sidebar({ isOpen, onClose, onClearChat, onToggleDarkMode, isDarkMode }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, onClearChat, onToggleDarkMode, isDarkMode, messageCount }: SidebarProps) {
+  const [clearPercentage, setClearPercentage] = useState(100)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+
+  const handleClearConfirm = () => {
+    onClearChat(clearPercentage)
+    setShowClearConfirm(false)
+    setClearPercentage(100)
+  }
+
+  const messagesToRemove = Math.ceil((messageCount * clearPercentage) / 100)
+
   return (
     <>
       <div
@@ -40,19 +52,69 @@ export function Sidebar({ isOpen, onClose, onClearChat, onToggleDarkMode, isDark
           </div>
           
           <div className="space-y-4">
-            <button
-              onClick={onClearChat}
-              className={`w-full px-4 py-2 rounded-lg flex items-center space-x-2 ${
+            {messageCount > 0 && (
+              <div className={`p-4 rounded-lg ${
                 isDarkMode 
-                  ? 'bg-red-900/20 text-red-300 hover:bg-red-900/30' 
-                  : 'bg-red-50 text-red-600 hover:bg-red-100'
-              }`}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              <span>Limpar Histórico</span>
-            </button>
+                  ? 'bg-gray-700' 
+                  : 'bg-gray-100'
+              }`}>
+                <div className={`text-sm mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Limpar histórico ({clearPercentage}%)
+                </div>
+                <input
+                  type="range"
+                  min="10"
+                  max="100"
+                  step="10"
+                  value={clearPercentage}
+                  onChange={(e) => setClearPercentage(Number(e.target.value))}
+                  className="w-full"
+                />
+                <div className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {messagesToRemove} mensagens mais antigas serão removidas
+                </div>
+                {!showClearConfirm ? (
+                  <button
+                    onClick={() => setShowClearConfirm(true)}
+                    className={`mt-2 w-full px-4 py-2 rounded-lg ${
+                      isDarkMode 
+                        ? 'bg-red-900/20 text-red-300 hover:bg-red-900/30' 
+                        : 'bg-red-50 text-red-600 hover:bg-red-100'
+                    }`}
+                  >
+                    Limpar {clearPercentage}% do histórico
+                  </button>
+                ) : (
+                  <div className="mt-2 space-y-2">
+                    <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Confirma a remoção?
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={handleClearConfirm}
+                        className={`flex-1 px-4 py-2 rounded-lg ${
+                          isDarkMode 
+                            ? 'bg-red-900/20 text-red-300 hover:bg-red-900/30' 
+                            : 'bg-red-50 text-red-600 hover:bg-red-100'
+                        }`}
+                      >
+                        Confirmar
+                      </button>
+                      <button
+                        onClick={() => setShowClearConfirm(false)}
+                        className={`flex-1 px-4 py-2 rounded-lg ${
+                          isDarkMode 
+                            ? 'bg-gray-600 text-gray-300 hover:bg-gray-500' 
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <button
               onClick={onToggleDarkMode}

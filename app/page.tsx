@@ -36,7 +36,7 @@ export default function Chat() {
   const [currentResponse, setCurrentResponse] = useState('')
   const [isDarkMode, setIsDarkMode] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [contextTokens, setContextTokens] = useState(SYSTEM_PROMPT_TOKENS)
+  const [contextTokens, setContextTokens] = useState(0)
 
   // Add dark mode effect
   useEffect(() => {
@@ -119,13 +119,10 @@ export default function Chat() {
           formattedMessages.push({
             role: 'user',
             content: [
-              { type: 'text', text: msg.content || 'Analise esta imagem por favor.' },
+              ...(msg.content ? [{ type: 'text', text: msg.content }] : []),
               { 
                 type: 'image_url',
-                image_url: {
-                  url: msg.image,
-                  detail: 'high'
-                }
+                image_url: { url: msg.image, detail: 'high' }
               }
             ]
           })
@@ -148,17 +145,14 @@ export default function Chat() {
       formattedMessages.push({
         role: 'user',
         content: [
-          { type: 'text', text: message || 'Analise esta imagem por favor.' },
+          ...(message ? [{ type: 'text', text: message }] : []),
           { 
             type: 'image_url',
-            image_url: {
-              url: currentImageUrl,
-              detail: 'high'
-            }
+            image_url: { url: currentImageUrl, detail: 'high' }
           }
         ]
       })
-    } else {
+    } else if (message) {
       formattedMessages.push({
         role: 'user',
         content: message
@@ -281,12 +275,18 @@ export default function Chat() {
     }
   }, [messages, isTyping, saveConversationHistory, streamResponse])
 
-  const handleClearChat = useCallback(() => {
-    if (window.confirm('Tem certeza que deseja limpar todo o histórico da conversa?')) {
-      setMessages([])
-      setError(null)
-      localStorage.removeItem('conversationHistory')
-    }
+  const handleClearChat = useCallback((percentage: number) => {
+    setMessages(prevMessages => {
+      if (percentage === 100) {
+        localStorage.removeItem('conversationHistory')
+        return []
+      }
+      const messagesToKeep = Math.floor(prevMessages.length * (1 - percentage / 100))
+      const newMessages = prevMessages.slice(-messagesToKeep)
+      localStorage.setItem('conversationHistory', JSON.stringify(newMessages))
+      return newMessages
+    })
+    setError(null)
   }, [])
 
   return (
@@ -297,6 +297,7 @@ export default function Chat() {
         onClearChat={handleClearChat}
         onToggleDarkMode={toggleDarkMode}
         isDarkMode={isDarkMode}
+        messageCount={messages.length}
       />
       <div className="flex flex-col flex-grow">
         <header className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b p-4 flex justify-between items-center`}>
