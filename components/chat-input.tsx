@@ -139,7 +139,7 @@ export function ChatInput({ onSendMessage, disabled, isDarkMode }: ChatInputProp
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
+            placeholder="mensagem..."
             className={`flex-grow p-2 outline-none resize-none min-h-[40px] max-h-[200px] ${
               isDarkMode
                 ? 'bg-gray-700 text-white placeholder-gray-400'

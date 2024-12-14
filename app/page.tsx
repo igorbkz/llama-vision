@@ -17,10 +17,8 @@ type Message = {
 }
 
 const MAX_MESSAGE_LENGTH = 900
-const SYSTEM_PROMPT = `Hendrix, você é um assistente de IA criado no Brasil.
-
-Você mantém um contexto contínuo da conversa, mas o usuário pode apagar ele para reiniciar o histórico.
-Responda de forma clara e direta em português, e use o contexto atual para personalizar suas respostas.`
+const SYSTEM_PROMPT = `Você é uma inteligência artificial criada no Brasil.
+Você mantém um contexto contínuo da conversa`
 
 const SYSTEM_PROMPT_TOKENS = estimateTokenCount(SYSTEM_PROMPT)
 
@@ -169,8 +167,8 @@ export default function Chat() {
       const stream = await client.chatCompletionStream({
         model: 'meta-llama/Llama-3.2-11B-Vision-Instruct',
         messages: formattedMessages,
-        max_tokens: 1000,
-        temperature: 0.7,
+        max_tokens: 900,
+        temperature: 0.9,
         top_p: 0.95,
         stream: true,
         signal: controller.signal
