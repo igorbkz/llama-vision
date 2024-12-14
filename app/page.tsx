@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { ChatMessage } from '@/components/chat-message'
 import { ChatInput } from '@/components/chat-input'
 import { TypingIndicator } from '@/components/typing-indicator'
-import { ClearChatButton } from '@/components/clear-chat-button'
 import { Sidebar } from '@/components/sidebar'
 import { HfInference } from "@huggingface/inference"
 import { estimateTokenCount, estimateMessageTokens, selectMessagesForContext, MAX_CONTEXT_TOKENS } from '@/lib/token-utils'
@@ -18,6 +17,7 @@ type Message = {
 }
 
 const MAX_MESSAGE_LENGTH = 900
+const MAX_CONTEXT_TOKENS = 10000
 const SYSTEM_PROMPT = `Hendrix, você é um assistente de IA criado no Brasil.
 
 Você mantém um contexto contínuo da conversa, mas o usuário pode apagar ele para reiniciar o histórico.
@@ -34,8 +34,31 @@ export default function Chat() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currentResponse, setCurrentResponse] = useState('')
+  const [isDarkMode, setIsDarkMode] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [contextTokens, setContextTokens] = useState(SYSTEM_PROMPT_TOKENS)
+
+  // Add dark mode effect
+  useEffect(() => {
+    const isDark = localStorage.getItem('darkMode') === 'true'
+    setIsDarkMode(isDark)
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+    }
+  }, [])
+
+  const toggleDarkMode = useCallback(() => {
+    setIsDarkMode(prev => {
+      const newValue = !prev
+      localStorage.setItem('darkMode', String(newValue))
+      if (newValue) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+      return newValue
+    })
+  }, [])
 
   const loadConversationHistory = useCallback(() => {
     try {
@@ -65,8 +88,9 @@ export default function Chat() {
   }, [messages, currentResponse])
 
   useEffect(() => {
-    const tokens = messages.reduce((total, msg) => 
-      total + estimateMessageTokens(msg), SYSTEM_PROMPT_TOKENS)
+    const tokens = messages.length > 0 
+      ? messages.reduce((total, msg) => total + estimateMessageTokens(msg), SYSTEM_PROMPT_TOKENS)
+      : 0
     setContextTokens(tokens)
   }, [messages])
 
@@ -258,29 +282,39 @@ export default function Chat() {
   }, [messages, isTyping, saveConversationHistory, streamResponse])
 
   const handleClearChat = useCallback(() => {
-    setMessages([])
-    setError(null)
-    localStorage.removeItem('conversationHistory')
+    if (window.confirm('Tem certeza que deseja limpar todo o histórico da conversa?')) {
+      setMessages([])
+      setError(null)
+      localStorage.removeItem('conversationHistory')
+    }
   }, [])
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+    <div className={`flex h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)}
+        onClearChat={handleClearChat}
+        onToggleDarkMode={toggleDarkMode}
+        isDarkMode={isDarkMode}
+      />
       <div className="flex flex-col flex-grow">
-        <header className="bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+        <header className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b p-4 flex justify-between items-center`}>
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            className={`${isDarkMode ? 'text-gray-300 hover:text-gray-100' : 'text-gray-500 hover:text-gray-700'} focus:outline-none`}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <div className="text-sm text-gray-500">
-            Contexto: {contextTokens}/{MAX_CONTEXT_TOKENS} tokens
-          </div>
+          {messages.length > 0 && (
+            <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+              Contexto: {contextTokens}/{MAX_CONTEXT_TOKENS} tokens
+            </div>
+          )}
         </header>
-        <div className="flex-grow overflow-auto p-4 space-y-4" id="messages">
+        <div className={`flex-grow overflow-auto p-4 space-y-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`} id="messages">
           {messages
             .filter((message): message is Message & { role: 'user' | 'assistant' } => 
               message.role === 'user' || message.role === 'assistant'
@@ -292,35 +326,36 @@ export default function Chat() {
                 content={message.content}
                 image={message.image}
                 showTokenCount={true}
+                isDarkMode={isDarkMode}
               />
             ))}
           {isTyping && (
-            <div className="message bg-gray-100 text-gray-900 self-start p-4 rounded-lg max-w-[80%]">
+            <div className={`message ${isDarkMode ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-900'} self-start p-4 rounded-lg max-w-[80%]`}>
               <div className="prose prose-sm">
                 {currentResponse || <TypingIndicator />}
               </div>
             </div>
           )}
           {error && (
-            <div className="text-red-500 text-sm p-2 bg-red-50 rounded">
+            <div className={`text-red-500 text-sm p-2 ${isDarkMode ? 'bg-red-900/20' : 'bg-red-50'} rounded`}>
               {error}
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
-        <div className="border-t border-gray-200 p-4">
+        <div className={`border-t ${isDarkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-white'} p-4`}>
           <ChatInput 
             onSendMessage={handleSendMessage}
-            disabled={isTyping} 
+            disabled={isTyping}
+            isDarkMode={isDarkMode}
           />
-          <div className="mt-2 flex justify-center space-x-4">
-            <ClearChatButton onClearChat={handleClearChat} />
-            {contextTokens > MAX_CONTEXT_TOKENS * 0.9 && (
+          {contextTokens > MAX_CONTEXT_TOKENS * 0.9 && (
+            <div className="mt-2 flex justify-center">
               <div className="text-yellow-600 text-sm">
                 Contexto próximo do limite. Considere limpar o histórico.
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
