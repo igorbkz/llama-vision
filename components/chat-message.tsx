@@ -28,8 +28,12 @@ export function ChatMessage({ role, content, image, showTokenCount, isDarkMode }
       >
         <div className="prose prose-sm">
           {image && (
-            <div className="mb-2">
-              <img src={image} alt="Uploaded content" className="max-w-full rounded" />
+            <div className="mb-2 max-w-[240px]">
+              <img 
+                src={image} 
+                alt="Uploaded content" 
+                className="max-h-32 w-full rounded object-contain bg-white" 
+              />
             </div>
           )}
           {content.split('\n').map((line, i) => (

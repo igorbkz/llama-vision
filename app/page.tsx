@@ -6,7 +6,7 @@ import { ChatInput } from '@/components/chat-input'
 import { TypingIndicator } from '@/components/typing-indicator'
 import { Sidebar } from '@/components/sidebar'
 import { HfInference } from "@huggingface/inference"
-import { estimateTokenCount, estimateMessageTokens, selectMessagesForContext, MAX_CONTEXT_TOKENS } from '@/lib/token-utils'
+import { estimateTokenCount, estimateMessageTokens, selectMessagesForContext } from '@/lib/token-utils'
 
 type MessageRole = 'user' | 'assistant' | 'system'
 type Message = {
