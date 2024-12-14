@@ -17,7 +17,7 @@ type Message = {
 }
 
 const MAX_MESSAGE_LENGTH = 900
-const MAX_CONTEXT_TOKENS = 10000
+const MAX_CONTEXT_TOKENS = 4000
 const SYSTEM_PROMPT = `Hendrix, você é um assistente de IA criado no Brasil.
 
 Você mantém um contexto contínuo da conversa, mas o usuário pode apagar ele para reiniciar o histórico.
@@ -119,14 +119,13 @@ export default function Chat() {
           formattedMessages.push({
             role: 'user',
             content: [
-              ...(msg.content ? [{ type: 'text', text: msg.content }] : []),
               { 
                 type: 'image_url',
                 image_url: { url: msg.image, detail: 'high' }
               }
             ]
           })
-        } else {
+        } else if (msg.content) {
           formattedMessages.push({
             role: 'user',
             content: msg.content
@@ -145,7 +144,6 @@ export default function Chat() {
       formattedMessages.push({
         role: 'user',
         content: [
-          ...(message ? [{ type: 'text', text: message }] : []),
           { 
             type: 'image_url',
             image_url: { url: currentImageUrl, detail: 'high' }
@@ -235,12 +233,19 @@ export default function Chat() {
       timestamp: Date.now()
     }
     
-    setMessages(prevMessages => [...prevMessages, newUserMessage])
+    // Limpa imagens antigas e seleciona mensagens dentro do limite de contexto
+    const cleanedMessages = messages.map(msg => ({
+      ...msg,
+      image: msg.timestamp < Date.now() - 1800000 ? undefined : msg.image
+    }))
+    
+    const selectedMessages = selectMessagesForContext([...cleanedMessages, newUserMessage], SYSTEM_PROMPT_TOKENS)
+    setMessages(selectedMessages)
     setIsTyping(true)
     setCurrentResponse('')
     
     try {
-      const finalResponse = await streamResponse(message, messages, imageUrl)
+      const finalResponse = await streamResponse(message, selectedMessages, imageUrl)
       
       const newAssistantMessage: Message = { 
         role: 'assistant',
@@ -248,11 +253,11 @@ export default function Chat() {
         timestamp: Date.now()
       }
       
-      setMessages(prevMessages => {
-        const updatedMessages = [...prevMessages, newAssistantMessage].slice(-MAX_CONTEXT_TOKENS)
-        saveConversationHistory(updatedMessages)
-        return updatedMessages
-      })
+      // Atualiza mensagens mantendo apenas as que cabem no contexto
+      const updatedMessages = selectMessagesForContext([...selectedMessages, newAssistantMessage], SYSTEM_PROMPT_TOKENS)
+      setMessages(updatedMessages)
+      saveConversationHistory(updatedMessages)
+      
     } catch (error) {
       console.error('Erro detalhado:', error)
       const errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro desconhecido'
@@ -264,11 +269,10 @@ export default function Chat() {
         }Por favor, tente novamente.`,
         timestamp: Date.now()
       }
-      setMessages(prevMessages => {
-        const updatedMessages = [...prevMessages, errorResponse]
-        saveConversationHistory(updatedMessages)
-        return updatedMessages
-      })
+      
+      const updatedMessages = selectMessagesForContext([...selectedMessages, errorResponse], SYSTEM_PROMPT_TOKENS)
+      setMessages(updatedMessages)
+      saveConversationHistory(updatedMessages)
     } finally {
       setIsTyping(false)
       setCurrentResponse('')
@@ -309,11 +313,9 @@ export default function Chat() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          {messages.length > 0 && (
-            <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-              Contexto: {contextTokens}/{MAX_CONTEXT_TOKENS} tokens
-            </div>
-          )}
+          <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+            {messages.length} mensagens
+          </div>
         </header>
         <div className={`flex-grow overflow-auto p-4 space-y-4 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`} id="messages">
           {messages
@@ -350,13 +352,6 @@ export default function Chat() {
             disabled={isTyping}
             isDarkMode={isDarkMode}
           />
-          {contextTokens > MAX_CONTEXT_TOKENS * 0.9 && (
-            <div className="mt-2 flex justify-center">
-              <div className="text-yellow-600 text-sm">
-                Contexto próximo do limite. Considere limpar o histórico.
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

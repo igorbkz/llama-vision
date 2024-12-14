@@ -2,6 +2,7 @@ interface Message {
   role: 'user' | 'assistant' | 'system'
   content: string
   image?: string
+  timestamp: number
 }
 
 /**
@@ -9,8 +10,8 @@ interface Message {
  * Esta é uma estimativa simples, não é 100% precisa mas serve como base
  */
 export function estimateTokenCount(text: string): number {
-  // Em média, 1 token = ~4 caracteres em português
-  return Math.ceil(text.length / 4)
+  // Em média, 1 token = ~3 caracteres em português (sendo mais conservador)
+  return Math.ceil(text.length / 3)
 }
 
 /**
@@ -20,9 +21,13 @@ export function estimateMessageTokens(message: Message): number {
   let total = estimateTokenCount(message.content)
   
   // Uma imagem consome aproximadamente 512 tokens no modelo Llama Vision
+  // Adicionamos uma margem de segurança para metadados e processamento
   if (message.image) {
-    total += 512
+    total += 650
   }
+  
+  // Adiciona tokens para role e outros metadados
+  total += 4
   
   return total
 }
@@ -32,6 +37,7 @@ export const MAX_CONTEXT_TOKENS = 4000
 
 /**
  * Seleciona mensagens para manter no contexto respeitando o limite de tokens
+ * Mantém sempre as mensagens mais recentes
  */
 export function selectMessagesForContext(
   messages: Message[],
@@ -45,8 +51,11 @@ export function selectMessagesForContext(
     const message = messages[i]
     const messageTokens = estimateMessageTokens(message)
     
+    // Mantém uma margem de segurança de 15% do limite para evitar colapso
+    const safeLimit = MAX_CONTEXT_TOKENS * 0.85
+    
     // Verifica se adicionar esta mensagem excederia o limite
-    if (totalTokens + messageTokens > MAX_CONTEXT_TOKENS) {
+    if (totalTokens + messageTokens > safeLimit) {
       break
     }
     
